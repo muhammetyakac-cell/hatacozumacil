@@ -1,0 +1,63 @@
+.footer {
+  border-top: 1px solid var(--border);
+  background-color: var(--card-bg);
+  padding: 4rem 0 2rem;
+  margin-top: 4rem;
+}
+
+.container {
+  display: flex;
+  flex-direction: column;
+  gap: 3rem;
+}
+
+.top {
+  display: flex;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 2rem;
+}
+
+.brand h3 {
+  font-size: 1.5rem;
+  margin-bottom: 1rem;
+  background: linear-gradient(to right, var(--primary), #8b5cf6);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.brand p {
+  color: var(--secondary-foreground);
+  max-width: 400px;
+}
+
+.links h4 {
+  font-size: 1.125rem;
+  margin-bottom: 1rem;
+  color: var(--foreground);
+}
+
+.links ul {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.links a {
+  color: var(--secondary-foreground);
+  font-size: 0.875rem;
+}
+
+.links a:hover {
+  color: var(--primary);
+}
+
+.bottom {
+  text-align: center;
+  padding-top: 2rem;
+  border-top: 1px solid var(--border);
+  color: var(--secondary-foreground);
+  font-size: 0.875rem;
+}
