@@ -1,17 +1,26 @@
 import Link from 'next/link';
-import { Search, Monitor, Terminal, Gamepad, Globe, HardDrive, Smartphone } from 'lucide-react';
+import { Search, FolderOpen } from 'lucide-react';
 import styles from './page.module.css';
+import { neon } from '@neondatabase/serverless';
+import { drizzle } from 'drizzle-orm/neon-http';
+import * as schema from '../db/schema';
+import { desc } from 'drizzle-orm';
 
-const categories = [
-  { name: 'Windows Hataları', icon: Monitor, slug: 'windows', count: 1250 },
-  { name: 'Yazılım & Kodlama', icon: Terminal, slug: 'yazilim', count: 3420 },
-  { name: 'Oyun Hataları', icon: Gamepad, slug: 'oyun', count: 890 },
-  { name: 'Web Tarayıcıları', icon: Globe, slug: 'tarayici', count: 450 },
-  { name: 'Donanım', icon: HardDrive, slug: 'donanim', count: 320 },
-  { name: 'Mobil Uygulamalar', icon: Smartphone, slug: 'mobil', count: 670 },
-];
+export const revalidate = 60; // Revalidate every 60 seconds
 
-export default function Home() {
+export default async function Home() {
+  const sql = neon(process.env.DATABASE_URL!);
+  const db = drizzle(sql, { schema });
+
+  const dbCategories = await db.select().from(schema.categories);
+  const recentErrors = await db.query.errors.findMany({
+    with: {
+      category: true,
+    },
+    orderBy: [desc(schema.errors.createdAt)],
+    limit: 10,
+  });
+
   return (
     <div className={styles.home}>
       {/* Hero Section */}
@@ -39,25 +48,20 @@ export default function Home() {
       {/* Categories Section */}
       <section className={styles.section}>
         <div className={styles.sectionHeader}>
-          <h2>Popüler Kategoriler</h2>
-          <Link href="/kategoriler" className={styles.viewAll}>Tümünü Gör &rarr;</Link>
+          <h2>Kategoriler</h2>
         </div>
         
         <div className={styles.grid}>
-          {categories.map((cat) => {
-            const Icon = cat.icon;
-            return (
-              <Link href={`/kategori/${cat.slug}`} key={cat.slug} className={`card ${styles.categoryCard}`}>
-                <div className={styles.categoryIconWrapper}>
-                  <Icon size={32} className={styles.categoryIcon} />
-                </div>
-                <div className={styles.categoryInfo}>
-                  <h3>{cat.name}</h3>
-                  <p>{cat.count} Çözüm</p>
-                </div>
-              </Link>
-            );
-          })}
+          {dbCategories.map((cat) => (
+            <Link href={`/kategori/${cat.slug}`} key={cat.slug} className={`card ${styles.categoryCard}`}>
+              <div className={styles.categoryIconWrapper}>
+                <FolderOpen size={32} className={styles.categoryIcon} />
+              </div>
+              <div className={styles.categoryInfo}>
+                <h3>{cat.name}</h3>
+              </div>
+            </Link>
+          ))}
         </div>
       </section>
 
@@ -68,16 +72,15 @@ export default function Home() {
         </div>
         
         <div className={styles.list}>
-          {/* Mock data for now */}
-          {[1, 2, 3, 4, 5].map((i) => (
-            <Link href={`/hata/windows/0x800f081f-guncellestirme-hatasi`} key={i} className={`card ${styles.errorItem}`}>
+          {recentErrors.map((error) => (
+            <Link href={`/hata/${error.category.slug}/${error.slug}`} key={error.id} className={`card ${styles.errorItem}`}>
               <div className={styles.errorHeader}>
-                <span className={styles.errorCode}>0x800f081f</span>
-                <span className={styles.errorCategory}>Windows</span>
+                <span className={styles.errorCode}>{error.errorCode}</span>
+                <span className={styles.errorCategory}>{error.category.name}</span>
               </div>
-              <h3 className={styles.errorTitle}>Windows Update Hatası 0x800f081f Kesin Çözümü</h3>
+              <h3 className={styles.errorTitle}>{error.title}</h3>
               <p className={styles.errorExcerpt}>
-                Bu hata genellikle Windows'un gerekli dosyaları indirememesinden kaynaklanır. DISM aracı ile sistem imajını onararak...
+                {error.content.substring(0, 150)}...
               </p>
             </Link>
           ))}

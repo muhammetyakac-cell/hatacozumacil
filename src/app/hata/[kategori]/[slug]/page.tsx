@@ -1,19 +1,42 @@
 import { ShieldAlert, CheckCircle2, ChevronRight, Copy } from 'lucide-react';
 import Link from 'next/link';
+import { notFound } from 'next/navigation';
 import styles from './page.module.css';
+import { neon } from '@neondatabase/serverless';
+import { drizzle } from 'drizzle-orm/neon-http';
+import * as schema from '../../../../db/schema';
+import { eq } from 'drizzle-orm';
 
-export default function ErrorDetail({ params }: { params: { kategori: string, slug: string } }) {
-  // In real app, fetch from NeonDB using params.slug
-  
+export const revalidate = 3600; // Cache for 1 hour
+
+export default async function ErrorDetail({ params }: { params: { kategori: string, slug: string } }) {
+  const sql = neon(process.env.DATABASE_URL!);
+  const db = drizzle(sql, { schema });
+
+  const errorData = await db.query.errors.findFirst({
+    where: eq(schema.errors.slug, params.slug),
+    with: {
+      category: true,
+    }
+  });
+
+  if (!errorData) {
+    notFound();
+  }
+
+  // Format content (very basic implementation for demonstration)
+  // In a real scenario, this would be markdown or HTML handled safely
+  const formattedContent = errorData.content.split('\n').filter(p => p.trim().length > 0);
+
   return (
     <div className={styles.container}>
       {/* Breadcrumb */}
       <nav className={styles.breadcrumb}>
         <Link href="/">Ana Sayfa</Link>
         <ChevronRight size={14} />
-        <Link href={`/kategori/${params.kategori}`}>{params.kategori.charAt(0).toUpperCase() + params.kategori.slice(1)}</Link>
+        <Link href={`/kategori/${errorData.category.slug}`}>{errorData.category.name}</Link>
         <ChevronRight size={14} />
-        <span>0x800f081f</span>
+        <span>{errorData.errorCode}</span>
       </nav>
 
       <div className={styles.contentWrapper}>
@@ -23,8 +46,8 @@ export default function ErrorDetail({ params }: { params: { kategori: string, sl
             __html: JSON.stringify({
               "@context": "https://schema.org",
               "@type": "TechArticle",
-              "headline": "Windows Update Hatası 0x800f081f Kesin Çözümü",
-              "datePublished": "2026-10-14",
+              "headline": errorData.title,
+              "datePublished": errorData.createdAt.toISOString(),
               "author": {
                 "@type": "Organization",
                 "name": "HataÇözümAcil"
@@ -35,11 +58,11 @@ export default function ErrorDetail({ params }: { params: { kategori: string, sl
         <article className={styles.mainContent}>
           <header className={styles.header}>
             <div className={styles.errorTags}>
-              <span className={styles.errorCode}>0x800f081f</span>
-              <span className={styles.tag}>Windows Update</span>
+              <span className={styles.errorCode}>{errorData.errorCode}</span>
+              <span className={styles.tag}>{errorData.category.name}</span>
             </div>
-            <h1 className={styles.title}>Windows Update Hatası 0x800f081f Kesin Çözümü</h1>
-            <p className={styles.meta}>Son Güncelleme: 14 Ekim 2026 • Okuma Süresi: 3 dk</p>
+            <h1 className={styles.title}>{errorData.title}</h1>
+            <p className={styles.meta}>Eklenme Tarihi: {new Date(errorData.createdAt).toLocaleDateString('tr-TR')}</p>
           </header>
 
           <div className={`card ${styles.solutionCard}`}>
@@ -48,44 +71,24 @@ export default function ErrorDetail({ params }: { params: { kategori: string, sl
               Hata Neden Kaynaklanır?
             </h2>
             <p>
-              Bu hata kodu genellikle Windows'un `.NET Framework 3.5` veya diğer önemli güncellemeleri yüklerken kaynak dosyalarını bulamamasından kaynaklanır. Sistem imaj dosyalarındaki bozulmalar temel etkendir.
+              İnternetten otomatik olarak toplanan analizlere göre, bu hata ile karşılaşan çoğu kullanıcının yaşadığı problem aşağıdaki çözümler ile giderilmiştir.
             </p>
           </div>
 
           <div className={styles.solutionSteps}>
-            <h2><CheckCircle2 className={styles.iconSuccess} /> Adım Adım Çözüm</h2>
+            <h2><CheckCircle2 className={styles.iconSuccess} /> Olası Çözümler ve Kaynaklar</h2>
             
             <div className={styles.step}>
-              <div className={styles.stepNumber}>1</div>
               <div className={styles.stepContent}>
-                <h3>Komut İstemini Yönetici Olarak Çalıştırın</h3>
-                <p>Başlat menüsüne <strong>cmd</strong> yazın, sağ tıklayıp "Yönetici olarak çalıştır" seçeneğini seçin.</p>
-              </div>
-            </div>
-
-            <div className={styles.step}>
-              <div className={styles.stepNumber}>2</div>
-              <div className={styles.stepContent}>
-                <h3>DISM Aracını Kullanın</h3>
-                <p>Aşağıdaki komutu kopyalayın ve komut istemine yapıştırıp Enter'a basın:</p>
-                <div className={styles.codeBlock}>
-                  <code>DISM /Online /Cleanup-Image /RestoreHealth</code>
-                  <button className={styles.copyButton} title="Kopyala"><Copy size={16} /></button>
-                </div>
-                <p className={styles.note}>Bu işlem internet hızınıza bağlı olarak 15-20 dakika sürebilir. Yüzde 20'de takılı kalmış gibi görünebilir, lütfen bekleyin.</p>
-              </div>
-            </div>
-
-            <div className={styles.step}>
-              <div className={styles.stepNumber}>3</div>
-              <div className={styles.stepContent}>
-                <h3>Sistem Dosyası Denetleyicisini (SFC) Çalıştırın</h3>
-                <p>DISM işlemi başarıyla tamamlandıktan sonra şu komutu girin:</p>
-                <div className={styles.codeBlock}>
-                  <code>sfc /scannow</code>
-                  <button className={styles.copyButton} title="Kopyala"><Copy size={16} /></button>
-                </div>
-                <p>İşlem bittiğinde bilgisayarınızı yeniden başlatın.</p>
+                {formattedContent.map((paragraph, idx) => (
+                  <p key={idx} style={{ marginBottom: '1rem' }}>{paragraph}</p>
+                ))}
+                
+                {errorData.sourceUrls && errorData.sourceUrls.length > 0 && (
+                  <div style={{ marginTop: '2rem', padding: '1rem', backgroundColor: 'var(--surface-color)', borderRadius: '8px' }}>
+                    <p><strong>Kaynak:</strong> <a href={errorData.sourceUrls[0]} target="_blank" rel="noopener noreferrer">{errorData.sourceUrls[0]}</a></p>
+                  </div>
+                )}
               </div>
             </div>
           </div>
@@ -93,12 +96,8 @@ export default function ErrorDetail({ params }: { params: { kategori: string, sl
 
         <aside className={styles.sidebar}>
           <div className={`card ${styles.sidebarCard}`}>
-            <h3>Benzer Hatalar</h3>
-            <ul className={styles.relatedList}>
-              <li><Link href="#">0x80070005 Erişim Engellendi</Link></li>
-              <li><Link href="#">0x80240438 Güncelleme Hatası</Link></li>
-              <li><Link href="#">0x80070422 Windows Update Kapalı</Link></li>
-            </ul>
+            <h3>Sistem Durumu</h3>
+            <p>Bu makale yapay zeka ve otomatik bot sistemimiz tarafından oluşturulmuştur.</p>
           </div>
         </aside>
       </div>

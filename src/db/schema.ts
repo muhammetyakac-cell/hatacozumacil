@@ -1,7 +1,7 @@
 import { pgTable, text, timestamp, varchar, integer } from 'drizzle-orm/pg-core';
 import { relations } from 'drizzle-orm';
 
-export const categories = pgTable('categories', {
+export const categories = pgTable('hc_categories', {
   id: text('id').primaryKey(),
   name: varchar('name', { length: 255 }).notNull(),
   slug: varchar('slug', { length: 255 }).notNull().unique(),
@@ -10,7 +10,7 @@ export const categories = pgTable('categories', {
   createdAt: timestamp('created_at').defaultNow().notNull(),
 });
 
-export const errors = pgTable('errors', {
+export const errors = pgTable('hc_errors', {
   id: text('id').primaryKey(),
   categoryId: text('category_id').references(() => categories.id).notNull(),
   errorCode: varchar('error_code', { length: 100 }).notNull(),
@@ -22,13 +22,13 @@ export const errors = pgTable('errors', {
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
 });
 
-export const tags = pgTable('tags', {
+export const tags = pgTable('hc_tags', {
   id: text('id').primaryKey(),
   name: varchar('name', { length: 255 }).notNull(),
   slug: varchar('slug', { length: 255 }).notNull().unique(),
 });
 
-export const errorTags = pgTable('error_tags', {
+export const errorTags = pgTable('hc_error_tags', {
   errorId: text('error_id').references(() => errors.id).notNull(),
   tagId: text('tag_id').references(() => tags.id).notNull(),
 });
