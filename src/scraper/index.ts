@@ -5,8 +5,7 @@ import fs from 'fs';
 import path from 'path';
 import { translateToTurkish } from './translate';
 import slugify from 'slugify';
-
-import { Browser } from 'puppeteer';
+import { Browser, Page } from 'puppeteer';
 
 puppeteer.use(StealthPlugin());
 
@@ -22,17 +21,15 @@ export async function scrapeError(errorCode: string, categorySlug: string, categ
   console.log(`Starting scraping for ${errorCode} in ${categoryName}...`);
   const browser = existingBrowser || await puppeteer.launch({ headless: true });
   
+  let page: Page | null = null;
+  
   try {
-    const page = await browser.newPage();
+    page = await browser.newPage();
     const query = `${errorCode} error fix solution`;
     
-    // Using Bing to avoid Google Captchas, but you can switch to Google easily
     await page.goto(`https://www.bing.com/search?q=${encodeURIComponent(query)}`);
-    
-    // Wait for search results
     await page.waitForSelector('.b_algo h2 a');
     
-    // Get the first link
     const firstLink = await page.evaluate(() => {
       const el = document.querySelector('.b_algo h2 a') as HTMLAnchorElement;
       return el ? el.href : null;
@@ -40,13 +37,11 @@ export async function scrapeError(errorCode: string, categorySlug: string, categ
 
     if (!firstLink) {
       console.log('No results found.');
-      if (!existingBrowser) await browser.close();
       return;
     }
 
     console.log(`Found source: ${firstLink}`);
     
-    // Bing links often redirect, so we need to wait for navigation to finish
     await Promise.all([
       page.waitForNavigation({ waitUntil: 'networkidle2' }).catch(() => {}),
       page.goto(firstLink, { waitUntil: 'domcontentloaded' })
@@ -75,13 +70,15 @@ export async function scrapeError(errorCode: string, categorySlug: string, categ
     };
 
     saveToJson(data);
-    await page.close();
 
   } catch (error) {
     console.error(`Error scraping ${errorCode}:`, error);
   } finally {
+    if (page) {
+      await page.close().catch(() => {});
+    }
     if (!existingBrowser) {
-      await browser.close();
+      await browser.close().catch(() => {});
     }
   }
 }

@@ -9,12 +9,13 @@ import { eq } from 'drizzle-orm';
 
 export const revalidate = 3600; // Cache for 1 hour
 
-export default async function ErrorDetail({ params }: { params: { kategori: string, slug: string } }) {
+export default async function ErrorDetail({ params }: { params: Promise<{ kategori: string, slug: string }> }) {
+  const { slug } = await params;
   const sql = neon(process.env.DATABASE_URL!);
   const db = drizzle(sql, { schema });
 
   const errorData = await db.query.errors.findFirst({
-    where: eq(schema.errors.slug, params.slug),
+    where: eq(schema.errors.slug, slug),
     with: {
       category: true,
     }

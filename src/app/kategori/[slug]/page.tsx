@@ -9,12 +9,13 @@ import { eq, desc } from 'drizzle-orm';
 
 export const revalidate = 60; // Cache for 60 seconds
 
-export default async function CategoryPage({ params }: { params: { slug: string } }) {
+export default async function CategoryPage({ params }: { params: Promise<{ slug: string }> }) {
+  const { slug } = await params;
   const sql = neon(process.env.DATABASE_URL!);
   const db = drizzle(sql, { schema });
 
   const category = await db.query.categories.findFirst({
-    where: eq(schema.categories.slug, params.slug),
+    where: eq(schema.categories.slug, slug),
   });
 
   if (!category) {
