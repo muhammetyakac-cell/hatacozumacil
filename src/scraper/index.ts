@@ -98,13 +98,20 @@ function saveToJson(data: ScrapedData) {
     existingData = JSON.parse(fileContent);
   }
 
-  // Prevent duplicates
-  if (!existingData.find(d => d.errorCode === data.errorCode)) {
+  // Prevent duplicates (both by errorCode and by exact same solution text)
+  const isDuplicateCode = existingData.find(d => d.errorCode === data.errorCode);
+  const isDuplicateContent = existingData.find(d => d.solution === data.solution);
+
+  if (!isDuplicateCode && !isDuplicateContent) {
     existingData.push(data);
     fs.writeFileSync(filePath, JSON.stringify(existingData, null, 2));
     console.log(`Saved to ${filePath}`);
   } else {
-    console.log('Data already exists in JSON.');
+    if (isDuplicateContent && !isDuplicateCode) {
+      console.log('Skipping due to duplicate exact content from search engine.');
+    } else {
+      console.log('Data already exists in JSON.');
+    }
   }
 }
 
